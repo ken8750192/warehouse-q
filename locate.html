@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <title>庫存位置查詢</title>
+  <style>
+    body { font-family: sans-serif; padding: 2em; }
+    #result { margin-top: 1em; font-size: 1.2em; }
+  </style>
+</head>
+<body>
+  <h1>產品位置查找</h1>
+  <div id="result">Loading…</div>
+  <script>
+    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSgwIPlqA2cL7IaZ_y9wRP8p_oMeiclIQxlVyJuxMVTKK_WpCPUS-0x6-N7YutmBSvosuqNZgNDBf6g/pub?output=csv';
+    const params = new URLSearchParams(location.search);
+    const sku = params.get('sku');
+    const el = document.getElementById('result');
+    if (!sku) {
+      el.textContent = '未提供 sku 參數';
+    } else {
+      fetch(CSV_URL)
+        .then(res => res.text())
+        .then(csv => {
+          const lines = csv.trim().split('\n');
+          const header = lines.shift().split(',');
+          const idxSku = header.indexOf('sku');
+          const idxLoc = header.indexOf('location');
+          let found = null;
+          for (const line of lines) {
+            const cols = line.split(',');
+            if (cols[idxSku] === sku) {
+              found = cols[idxLoc];
+              break;
+            }
+          }
+          el.textContent = found
+            ? `產品 ${sku} 當前在：${found}`
+            : `找不到產品 ${sku} 的庫存記錄`;
+        })
+        .catch(err => {
+          el.textContent = '讀取庫存資料失敗';
+          console.error(err);
+        });
+    }
+  </script>
+</body>
+</html>
