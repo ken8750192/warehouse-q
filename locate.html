@@ -4,25 +4,10 @@
   <meta charset="UTF-8" />
   <title>庫存位置查詢</title>
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 2em;
-      font-size: 18px;    /* 全局文字放大 */
-      line-height: 1.6;
-    }
-    h1 {
-      font-size: 2.5em;    /* 標題放大 */
-      margin-bottom: 0.5em;
-    }
-    #result {
-      margin-top: 1em;
-      font-size: 1.5em;   /* 查詢結果文字放大 */
-      line-height: 1.4;
-    }
-    strong {
-      color: #2a7ae2;
-      font-size: 1.5em;   /* 強調文字同樣放大 */
-    }
+    body { font-family: sans-serif; padding: 2em; }
+    h1 { margin-bottom: 0.5em; }
+    #result { margin-top: 1em; font-size: 1.2em; line-height: 1.5; }
+    strong { color: #2a7ae2; }
   </style>
 </head>
 <body>
@@ -30,9 +15,9 @@
   <div id="result">Loading…</div>
 
   <script>
-    // ====== 修改這裡為你的 CSV 連結 ======
-    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSgwIPlqA2cL7IaZ_y9wRP8p_oMeiclIQxlVyJuxMVTKK_WpCPUS-0x6-N7YutmBSvosuqNZgNDBf6g/pubhtml';
-    // =================================
+    // ====== 修改這裡，貼上你發布後的 CSV 連結 ======
+    const CSV_URL = 'https://docs.google.com/spreadsheets/d/你的表ID/pub?output=csv';
+    // ============================================
 
     const params = new URLSearchParams(window.location.search);
     const sku    = params.get('sku');
