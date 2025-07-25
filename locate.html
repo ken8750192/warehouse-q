@@ -2,60 +2,71 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <title>庫存與圖片查詢</title>
+  <title>庫存位置查詢</title>
   <style>
     body {
       font-family: sans-serif;
       padding: 2em;
-      font-size: 18px;
+      font-size: 18px;    /* 全局文字放大 */
       line-height: 1.6;
     }
-    h1 { font-size: 2.5em; margin-bottom: 0.5em; }
-    #search { margin-bottom: 1em; }
-    #search input, #search button {
-      font-size: 1.2em; padding: 0.3em;
+    h1 {
+      font-size: 2.5em;    /* 標題放大 */
+      margin-bottom: 0.5em;
     }
-    #search button { margin-left: 0.5em; }
-    #result { margin-top: 1em; font-size: 1.5em; line-height: 1.4; }
-    strong { color: #2a7ae2; font-size: 1.5em; }
-    #prodImg { display: block; max-width: 80%; margin-bottom: 1em; }
+    #search {
+      margin-bottom: 1em;
+    }
+    #search input {
+      font-size: 1.2em;
+      padding: 0.3em;
+      width: 250px;
+    }
+    #search button {
+      font-size: 1.2em;
+      padding: 0.3em 1em;
+      margin-left: 0.5em;
+    }
+    #result {
+      margin-top: 1em;
+      font-size: 1.5em;   /* 查詢結果文字放大 */
+      line-height: 1.4;
+    }
+    strong {
+      color: #2a7ae2;
+      font-size: 1.5em;   /* 強調文字同樣放大 */
+    }
   </style>
 </head>
 <body>
-  <h1>產品位置與圖片查找</h1>
+  <h1>產品位置查找</h1>
 
   <div id="search">
     <input id="skuInput" type="text" placeholder="輸入產品編號，或掃碼後直接顯示" />
     <button id="searchBtn">查詢</button>
   </div>
 
-  <div id="result">
-    <img id="prodImg" src="" alt="產品圖片" style="display:none;" />
-    <div id="textResult">請輸入產品編號或掃碼。</div>
-  </div>
+  <div id="result">請輸入產品編號或掃碼。</div>
 
   <script>
     // ======== 把這裡換成你發布後的 CSV 連結（必須是 pub?output=csv） ========
     const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSgwIPlqA2cL7IaZ_y9wRP8p_oMeiclIQxlVyJuxMVTKK_WpCPUS-0x6-N7YutmBSvosuqNZgNDBf6g/pub?output=csv';
     // ===================================================================
 
-    const elResult    = document.getElementById('textResult');
-    const imgElement  = document.getElementById('prodImg');
-    const inputSku    = document.getElementById('skuInput');
-    const btnSearch   = document.getElementById('searchBtn');
+    const elResult = document.getElementById('result');
+    const inputSku = document.getElementById('skuInput');
+    const btnSearch = document.getElementById('searchBtn');
 
     async function querySku(sku) {
       elResult.textContent = '查詢中…';
-      imgElement.style.display = 'none';
       try {
-        const res   = await fetch(CSV_URL);
-        const csv   = await res.text();
+        const res = await fetch(CSV_URL);
+        const csv = await res.text();
         const lines = csv.trim().split('\n');
         const header = lines.shift().split(',');
-        const idxSku  = header.indexOf('sku');
+        const idxSku = header.indexOf('sku');
         const idxProd = header.indexOf('product_name');
-        const idxLoc  = header.indexOf('location');
-        const idxImg  = header.indexOf('image_url');
+        const idxLoc = header.indexOf('location');
 
         let record = null;
         for (const line of lines) {
@@ -63,18 +74,13 @@
           if (cols[idxSku] === sku) {
             record = {
               name: cols[idxProd],
-              loc:  cols[idxLoc],
-              img:  cols[idxImg]
+              loc: cols[idxLoc]
             };
             break;
           }
         }
 
         if (record) {
-          if (record.img) {
-            imgElement.src = record.img;
-            imgElement.style.display = 'block';
-          }
           elResult.innerHTML = `
             <p>產品名稱：<strong>${record.name}</strong></p>
             <p>產品編號：<strong>${sku}</strong></p>
@@ -94,6 +100,7 @@
       if (sku) querySku(sku);
     });
 
+    // 掃碼帶參數自動查詢
     const params = new URLSearchParams(window.location.search);
     const skuParam = params.get('sku');
     if (skuParam) {
