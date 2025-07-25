@@ -27,85 +27,104 @@
       padding: 0.5em 1.5em;
       margin-left: 0.5em;
     }
-    #result {
-      margin-top: 1em;
+    #textResult {
       font-size: 2em;
       line-height: 1.4;
+      margin-bottom: 0.5em;
     }
     strong {
       color: #2a7ae2;
       font-size: 2em;
     }
     #prodImg {
-      display: block;
+      display: none;
       max-width: 80%;
       margin: 1em auto 0;
       border: 1px solid #ccc;
     }
   </style>
+  <!-- 引入 Papa Parse 做可靠的 CSV 解析 -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 </head>
 <body>
   <h1>產品位置與圖片查找</h1>
 
   <div id="search">
-    <input id="skuInput" type="text" placeholder="輸入產品編號，或掃碼後直接顯示" />
+    <input id="skuInput" type="text" placeholder="輸入產品編號，或掃碼後自動帶入" />
     <button id="searchBtn">查詢</button>
   </div>
 
   <div id="result">
     <div id="textResult">請輸入產品編號或掃碼。</div>
-    <img id="prodImg" src="" alt="產品圖片" style="display:none;" />
+    <img id="prodImg" alt="產品圖片載入失敗" />
   </div>
 
   <script>
-    // ======== 請替換成你的 CSV 連結，需以 pub?output=csv 結尾 ========
+    // ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+    // 請改成你的公開 CSV（pub?output=csv 結尾）
     const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSgwIPlqA2cL7IaZ_y9wRP8p_oMeiclIQxlVyJuxMVTKK_WpCPUS-0x6-N7YutmBSvosuqNZgNDBf6g/pub?output=csv';
-    // ==================================================================
+    // ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
 
     const inputSku   = document.getElementById('skuInput');
     const btnSearch  = document.getElementById('searchBtn');
     const elText     = document.getElementById('textResult');
     const imgElement = document.getElementById('prodImg');
 
+    // 当图片加载失败时，输出错误 URL 便于调试
+    imgElement.onerror = () => console.error('圖片載入錯誤，URL =', imgElement.src);
+
     async function querySku(sku) {
+      console.clear();
+      console.log('▶ 開始查詢 SKU:', sku);
       elText.textContent = '查詢中…';
-      imgElement.style.display = 'none';  // 隐藏旧图片
+      imgElement.style.display = 'none';
+      imgElement.src = '';
 
       try {
         const res = await fetch(CSV_URL);
         const csv = await res.text();
         const { data } = Papa.parse(csv, { header: true, skipEmptyLines: true });
-        const record = data.find(r => r.sku === sku);
+        console.log('Parsed CSV rows:', data.length, data);
+
+        // 找出該 SKU 的記錄
+        const record = data.find(r => String(r.sku).trim() === sku);
+        console.log('Found record:', record);
 
         if (record) {
-          // 文字结果
+          // 顯示文字
           elText.innerHTML = `
             <p>產品名稱：<strong>${record.product_name}</strong></p>
             <p>產品編號：<strong>${sku}</strong></p>
             <p>所在儲位：<strong>${record.location}</strong></p>
           `;
-          // 图片放在文字下面
-          if (record.image_url) {
-            imgElement.src = record.image_url;
+
+          // 取得並 trim image_url
+          const url = (record.image_url || '').trim();
+          console.log('Image URL:', url);
+
+          if (url) {
+            imgElement.src = url;
             imgElement.style.display = 'block';
+          } else {
+            console.warn('此 SKU 無 image_url 欄位或為空');
           }
         } else {
           elText.textContent = `找不到產品 ${sku} 的庫存記錄`;
         }
-      } catch (e) {
-        console.error(e);
+      } catch (err) {
+        console.error('查詢失敗:', err);
         elText.textContent = '讀取庫存資料失敗';
       }
     }
 
+    // 綁定按鈕
     btnSearch.addEventListener('click', () => {
       const sku = inputSku.value.trim();
       if (sku) querySku(sku);
     });
 
-    // 支持扫码带 ?sku= 参数
-    const params   = new URLSearchParams(window.location.search);
+    // 如果 URL 帶 ?sku=XXX，自動觸發查詢
+    const params = new URLSearchParams(window.location.search);
     const skuParam = params.get('sku');
     if (skuParam) {
       inputSku.value = skuParam;
