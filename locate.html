@@ -7,75 +7,105 @@
     body {
       font-family: sans-serif;
       padding: 2em;
-      font-size: 18px;    /* 全局文字放大 */
+      font-size: 18px;
       line-height: 1.6;
     }
     h1 {
-      font-size: 2.5em;    /* 標題放大 */
+      font-size: 2.5em;
       margin-bottom: 0.5em;
+    }
+    #search {
+      margin-bottom: 1em;
+    }
+    #search input {
+      font-size: 1.2em;
+      padding: 0.3em;
+      width: 250px;
+    }
+    #search button {
+      font-size: 1.2em;
+      padding: 0.3em 1em;
+      margin-left: 0.5em;
     }
     #result {
       margin-top: 1em;
-      font-size: 1.5em;   /* 查詢結果文字放大 */
+      font-size: 1.5em;
       line-height: 1.4;
     }
     strong {
       color: #2a7ae2;
-      font-size: 1.5em;   /* 強調文字同樣放大 */
+      font-size: 1.5em;
     }
   </style>
 </head>
 <body>
   <h1>產品位置查找</h1>
-  <div id="result">Loading…</div>
+
+  <!-- 查询框 -->
+  <div id="search">
+    <input id="skuInput" type="text" placeholder="輸入產品編號，或掃碼後直接顯示" />
+    <button id="searchBtn">查詢</button>
+  </div>
+
+  <div id="result">請輸入產品編號或掃碼。</div>
 
   <script>
-    // ====== 修改這裡為你的 CSV 連結 ======
+    // === 把這裡換成你發布後的 CSV 連結 ===
     const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSgwIPlqA2cL7IaZ_y9wRP8p_oMeiclIQxlVyJuxMVTKK_WpCPUS-0x6-N7YutmBSvosuqNZgNDBf6g/pub?output=csv';
-    // =================================
+    // =======================================
 
+    const elResult = document.getElementById('result');
+    const inputSku = document.getElementById('skuInput');
+    const btnSearch = document.getElementById('searchBtn');
+
+    // 查詢函数
+    async function querySku(sku) {
+      elResult.textContent = '查詢中…';
+      try {
+        const res = await fetch(CSV_URL);
+        const csv = await res.text();
+        const lines = csv.trim().split('\n');
+        const header = lines.shift().split(',');
+        const idxSku  = header.indexOf('sku');
+        const idxProd = header.indexOf('product_name');
+        const idxLoc  = header.indexOf('location');
+
+        let record = null;
+        for (const line of lines) {
+          const cols = line.split(',');
+          if (cols[idxSku] === sku) {
+            record = { name: cols[idxProd], loc: cols[idxLoc] };
+            break;
+          }
+        }
+
+        if (record) {
+          elResult.innerHTML = `
+            <p>產品名稱：<strong>${record.name}</strong></p>
+            <p>產品編號：<strong>${sku}</strong></p>
+            <p>所在儲位：<strong>${record.loc}</strong></p>
+          `;
+        } else {
+          elResult.textContent = `找不到產品 ${sku} 的庫存記錄`;
+        }
+      } catch (e) {
+        console.error(e);
+        elResult.textContent = '讀取庫存資料失敗';
+      }
+    }
+
+    // 绑定按钮点击
+    btnSearch.addEventListener('click', () => {
+      const sku = inputSku.value.trim();
+      if (sku) querySku(sku);
+    });
+
+    // 如果扫码带参数 ?sku=XXX，页面加载后自动触发
     const params = new URLSearchParams(window.location.search);
-    const sku    = params.get('sku');
-    const el     = document.getElementById('result');
-
-    if (!sku) {
-      el.textContent = '未提供 sku 參數';
-    } else {
-      fetch(CSV_URL)
-        .then(res => res.text())
-        .then(csv => {
-          const lines  = csv.trim().split('\n');
-          const header = lines.shift().split(',');
-          const idxSku    = header.indexOf('sku');
-          const idxProd   = header.indexOf('product_name');
-          const idxLoc    = header.indexOf('location');
-
-          let record = null;
-          for (const line of lines) {
-            const cols = line.split(',');
-            if (cols[idxSku] === sku) {
-              record = {
-                name: cols[idxProd],
-                loc:  cols[idxLoc]
-              };
-              break;
-            }
-          }
-
-          if (record) {
-            el.innerHTML = `
-              <p>產品名稱：<strong>${record.name}</strong></p>
-              <p>產品編號：<strong>${sku}</strong></p>
-              <p>所在儲位：<strong>${record.loc}</strong></p>
-            `;
-          } else {
-            el.textContent = `找不到產品 ${sku} 的庫存記錄`;
-          }
-        })
-        .catch(err => {
-          console.error(err);
-          el.textContent = '讀取庫存資料失敗';
-        });
+    const skuParam = params.get('sku');
+    if (skuParam) {
+      inputSku.value = skuParam;
+      querySku(skuParam);
     }
   </script>
 </body>
