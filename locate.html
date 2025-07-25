@@ -30,16 +30,14 @@
   </div>
 
   <div id="result">
-    <!-- 產品圖片 -->
     <img id="prodImg" src="" alt="產品圖片" style="display:none;" />
-    <!-- 查詢結果文字 -->
     <div id="textResult">請輸入產品編號或掃碼。</div>
   </div>
 
   <script>
-    // ===== 改成你的 CSV 链接（必须包含 image_url 一栏） =====
+    // ======== 把這裡換成你發布後的 CSV 連結（必須是 pub?output=csv） ========
     const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSgwIPlqA2cL7IaZ_y9wRP8p_oMeiclIQxlVyJuxMVTKK_WpCPUS-0x6-N7YutmBSvosuqNZgNDBf6g/pub?output=csv';
-    // ======================================================
+    // ===================================================================
 
     const elResult    = document.getElementById('textResult');
     const imgElement  = document.getElementById('prodImg');
@@ -50,8 +48,8 @@
       elResult.textContent = '查詢中…';
       imgElement.style.display = 'none';
       try {
-        const res  = await fetch(CSV_URL);
-        const csv  = await res.text();
+        const res   = await fetch(CSV_URL);
+        const csv   = await res.text();
         const lines = csv.trim().split('\n');
         const header = lines.shift().split(',');
         const idxSku  = header.indexOf('sku');
@@ -73,12 +71,10 @@
         }
 
         if (record) {
-          // 显示图片
           if (record.img) {
             imgElement.src = record.img;
             imgElement.style.display = 'block';
           }
-          // 显示文字
           elResult.innerHTML = `
             <p>產品名稱：<strong>${record.name}</strong></p>
             <p>產品編號：<strong>${sku}</strong></p>
@@ -98,7 +94,6 @@
       if (sku) querySku(sku);
     });
 
-    // 扫码后自动查询
     const params = new URLSearchParams(window.location.search);
     const skuParam = params.get('sku');
     if (skuParam) {
