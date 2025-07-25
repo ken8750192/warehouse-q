@@ -2,106 +2,113 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <title>庫存位置查詢</title>
+  <title>庫存位置與圖片查詢</title>
   <style>
     body {
       font-family: sans-serif;
       padding: 2em;
-      font-size: 24px;    /* 全局文字进一步放大 */
+      font-size: 24px;      /* 整體字體放大 */
       line-height: 1.6;
     }
     h1 {
-      font-size: 3em;     /* 标题更大 */
+      font-size: 3em;       /* 標題放大 */
       margin-bottom: 0.5em;
     }
     #search {
       margin-bottom: 1.5em;
     }
     #search input {
-      font-size: 2em;     /* 输入框文字放大 */
+      font-size: 2em;
       padding: 0.5em;
       width: 300px;
     }
     #search button {
-      font-size: 2em;     /* 按钮文字放大 */
+      font-size: 2em;
       padding: 0.5em 1.5em;
       margin-left: 0.5em;
     }
     #result {
       margin-top: 1em;
-      font-size: 2em;     /* 查询结果文字放大 */
+      font-size: 2em;
       line-height: 1.4;
     }
     strong {
       color: #2a7ae2;
-      font-size: 2em;     /* 强调文字同样放大 */
+      font-size: 2em;
+    }
+    #prodImg {
+      display: block;
+      max-width: 80%;
+      margin: 1em auto;
+      border: 1px solid #ccc;
     }
   </style>
+  <!-- 引入 Papa Parse，用於可靠地解析 CSV -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 </head>
 <body>
-  <h1>產品位置查找</h1>
+  <h1>產品位置與圖片查找</h1>
 
   <div id="search">
     <input id="skuInput" type="text" placeholder="輸入產品編號，或掃碼後直接顯示" />
     <button id="searchBtn">查詢</button>
   </div>
 
-  <div id="result">請輸入產品編號或掃碼。</div>
+  <div id="result">
+    <img id="prodImg" src="" alt="產品圖片" style="display:none;" />
+    <div id="textResult">請輸入產品編號或掃碼。</div>
+  </div>
 
   <script>
-    // ======== 把這裡換成你發布後的 CSV 連結（必須是 pub?output=csv） ========
+    // ======== 請將這行換成你發布後的 CSV 連結（必須以 pub?output=csv 結尾） ========
     const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSgwIPlqA2cL7IaZ_y9wRP8p_oMeiclIQxlVyJuxMVTKK_WpCPUS-0x6-N7YutmBSvosuqNZgNDBf6g/pub?output=csv';
-    // ===================================================================
+    // ==============================================================================
 
-    const elResult = document.getElementById('result');
-    const inputSku = document.getElementById('skuInput');
-    const btnSearch = document.getElementById('searchBtn');
+    const inputSku   = document.getElementById('skuInput');
+    const btnSearch  = document.getElementById('searchBtn');
+    const elText     = document.getElementById('textResult');
+    const imgElement = document.getElementById('prodImg');
 
     async function querySku(sku) {
-      elResult.textContent = '查詢中…';
+      elText.textContent = '查詢中…';
+      imgElement.style.display = 'none';
+
       try {
         const res = await fetch(CSV_URL);
         const csv = await res.text();
-        const lines = csv.trim().split('\n');
-        const header = lines.shift().split(',');
-        const idxSku = header.indexOf('sku');
-        const idxProd = header.indexOf('product_name');
-        const idxLoc = header.indexOf('location');
-
-        let record = null;
-        for (const line of lines) {
-          const cols = line.split(',');
-          if (cols[idxSku] === sku) {
-            record = {
-              name: cols[idxProd],
-              loc: cols[idxLoc]
-            };
-            break;
-          }
-        }
+        const { data } = Papa.parse(csv, { header: true, skipEmptyLines: true });
+        // data 是一個物件陣列，每筆包含 sku, product_name, location, image_url
+        const record = data.find(r => r.sku === sku);
 
         if (record) {
-          elResult.innerHTML = `
-            <p>產品名稱：<strong>${record.name}</strong></p>
+          // 顯示圖片（若有）
+          if (record.image_url) {
+            imgElement.src = record.image_url;
+            imgElement.style.display = 'block';
+          }
+          // 顯示文字結果
+          elText.innerHTML = `
+            <p>產品名稱：<strong>${record.product_name}</strong></p>
             <p>產品編號：<strong>${sku}</strong></p>
-            <p>所在儲位：<strong>${record.loc}</strong></p>
+            <p>所在儲位：<strong>${record.location}</strong></p>
           `;
         } else {
-          elResult.textContent = `找不到產品 ${sku} 的庫存記錄`;
+          elText.textContent = `找不到產品 ${sku} 的庫存記錄`;
         }
       } catch (e) {
         console.error(e);
-        elResult.textContent = '讀取庫存資料失敗';
+        elText.textContent = '讀取庫存資料失敗';
       }
     }
 
+    // 綁定按鈕點擊
     btnSearch.addEventListener('click', () => {
       const sku = inputSku.value.trim();
       if (sku) querySku(sku);
     });
 
-    // 掃碼帶參數自動查詢
-    const params = new URLSearchParams(window.location.search);
+    // 支援掃碼帶參數 ?sku=XXX
+    const params   = new URLSearchParams(window.location.search);
     const skuParam = params.get('sku');
     if (skuParam) {
       inputSku.value = skuParam;
